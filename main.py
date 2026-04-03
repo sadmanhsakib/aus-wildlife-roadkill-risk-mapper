@@ -2,7 +2,7 @@ import json, time
 import requests
 import pandas as pd
 
-KANGAROO_KEY = 5219981
+KANGAROO_KEY = 12019022
 WOMBAT_KEY = 2440301
 GBIF_URL = "https://api.gbif.org/v1/occurrence/search"
 
@@ -21,8 +21,9 @@ def get_gbif_data():
     results = []
 
     while True:
+        print(offset)
         # for avoiding HTTP 429 error
-        time.sleep(0.4)
+        time.sleep(1)
 
         # parameters for Macropus giganteus in Australia
         params = {
@@ -42,7 +43,7 @@ def get_gbif_data():
             results.extend(data["results"])
 
             # stopping if it's the end of the dataset
-            if data["endOfRecords"]:
+            if data["endOfRecords"] or offset > 10000:
                 break
             offset += 300
         else:
@@ -82,7 +83,7 @@ def clean_data(data: list):
     print(df.info())
 
     # exporting the csv file
-    df.to_csv("wildlife_sightings.csv", index=False)
+    df.to_csv("kangaroo_sightings.csv", index=False)
 
 
 main()
