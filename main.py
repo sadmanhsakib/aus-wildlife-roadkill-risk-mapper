@@ -10,7 +10,7 @@ GBIF_URL = "https://api.gbif.org/v1/occurrence/search"
 def main():
     get_gbif_data()
 
-    with open("kangaroo.json", "r", encoding="utf-8") as file:
+    with open("wombat.json", "r", encoding="utf-8") as file:
         data = json.load(file)
 
     clean_data(data)
@@ -27,7 +27,7 @@ def get_gbif_data():
 
         # parameters for Macropus giganteus in Australia
         params = {
-            "taxonKey": KANGAROO_KEY,
+            "taxonKey": WOMBAT_KEY,
             "country": "AU",
             "hasCoordinate": "true",
             "limit": 300,
@@ -51,7 +51,7 @@ def get_gbif_data():
             print(response.text)
 
     # exporting the json file
-    with open("kangaroo.json", "w") as file:
+    with open("wombat.json", "w") as file:
         json.dump(results, file)
     print("✅Data exported successfully. ")
 
@@ -83,7 +83,7 @@ def clean_data(data: list):
     print(df.info())
 
     # exporting the csv file
-    df.to_csv("kangaroo_sightings.csv", index=False)
+    df.to_csv("wombat_sightings.csv", index=False)
 
 
 main()
