@@ -8,31 +8,31 @@ GBIF_URL = "https://api.gbif.org/v1/occurrence/search"
 
 
 def main():
-    get_gbif_data()
+    get_gbif_data(WOMBAT_KEY)
 
-    with open("wombat.json", "r", encoding="utf-8") as file:
+    file_name = "vombatus_ursinus_sightings_gbif.json"
+
+    with open(file_name, "r") as file:
         data = json.load(file)
 
-    clean_data(data)
+    clean_data(data, file_name)
 
 
-def get_gbif_data():
+def get_gbif_data(species_key: int):
     offset = 0
     results = []
 
     while True:
-        print(offset)
-        # for avoiding HTTP 429 error
-        time.sleep(1)
-
         # parameters for Macropus giganteus in Australia
         params = {
-            "taxonKey": WOMBAT_KEY,
+            "taxonKey": species_key,
             "country": "AU",
             "hasCoordinate": "true",
             "limit": 300,
             "offset": offset,
         }
+
+        print(f"Offset: {offset}")
 
         # sending the requests
         response = requests.get(GBIF_URL, params=params)
@@ -43,20 +43,27 @@ def get_gbif_data():
             results.extend(data["results"])
 
             # stopping if it's the end of the dataset
-            if data["endOfRecords"] or offset > 10000:
+            if data["endOfRecords"] or offset > 2500:
                 break
+
             offset += 300
         else:
             print(f"Error: {response.status_code}")
             print(response.text)
+            return 1
+
+        # for avoiding HTTP 429 error
+        time.sleep(1)
+
+    file_name = f"{results[0]['species'].lower().replace(' ', '_')}_sightings_gbif.json"
 
     # exporting the json file
-    with open("wombat.json", "w") as file:
+    with open(file_name, "w") as file:
         json.dump(results, file)
-    print("✅Data exported successfully. ")
+    print(f"✅Data exported to {file_name} successfully. ")
 
 
-def clean_data(data: list):
+def clean_data(data: list, file_name: str):
     # loading the dataframe
     df = pd.DataFrame(data)
 
@@ -83,7 +90,7 @@ def clean_data(data: list):
     print(df.info())
 
     # exporting the csv file
-    df.to_csv("wombat_sightings.csv", index=False)
+    df.to_csv(f"{file_name.replace('.json', '.csv')}", index=False)
 
 
 main()
