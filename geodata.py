@@ -26,11 +26,11 @@ states = gpd.read_file("SA1_2021_AUST_GDA2020.shp")
 # Filter to just the main states if territories are included
 states = states[states["STE_NAME21"].notna()]
 states_projected = states.to_crs(gdf_projected.crs)
-gdf_with_states = gpd.sjoin(
+high_risk = gpd.sjoin(
     gdf_projected, states_projected, how="inner", predicate="within"
 )
 
-gdf_with_states = gdf_with_states.drop(
+high_risk = high_risk.drop(
     columns=[
         "index_right",
         "SA1_CODE21",
@@ -50,6 +50,8 @@ gdf_with_states = gdf_with_states.drop(
         "LOCI_URI21",
     ]
 )
+
+low_risk = gdf_projected[~gdf_projected.index.isin(high_risk.index)]
 
 
 def main():
