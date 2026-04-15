@@ -7,14 +7,9 @@ __pycache__/
 *.so
 
 cache
-.venv
 test.py
-*.json
-*.csv
-*.shp
-*.shx
-*.dbf
-*.prj
+sightings/
+roads/
 
 # Distribution / packaging
 .Python
