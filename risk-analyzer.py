@@ -11,7 +11,7 @@ LONGITUDE_COLUMN = "longitude"
 df = pd.read_csv(file_name)
 
 
-def main():
+def prepare_spatial_data():
     # converting pandas DataFrame to GeoDataFrame
     gdf = gpd.GeoDataFrame(
         df,
@@ -67,12 +67,17 @@ def main():
     edges_projected = edges.to_crs("EPSG:32754")
     # creating a buffer of 500m around the roads
     road_buffer = edges_projected.buffer(500).union_all()
-    road_buffer_gdf = gpd.GeoDataFrame(geometry=[road_buffer], crs="EPSG:32754")
+    road_buffer = gpd.GeoDataFrame(geometry=[road_buffer], crs="EPSG:32754")
 
-    visualize_data(sightings, edges_projected, road_buffer_gdf)
+    return sightings, edges_projected, road_buffer
 
 
-def visualize_data(sightings, edges_projected, road_buffer_gdf):
+def main():
+    sightings, edges_projected, road_buffer = prepare_spatial_data()
+    visualize_data(sightings, edges_projected, road_buffer)
+
+
+def visualize_data(sightings, edges_projected, road_buffer):
     # isolating sightings to a specific area
     sightings_act = sightings[sightings["STE_NAME21"] == "Australian Capital Territory"]
 
@@ -80,12 +85,12 @@ def visualize_data(sightings, edges_projected, road_buffer_gdf):
 
     # plotting the edges and roads
     edges_projected.plot(ax=ax, color="gray", linewidth=0.5, alpha=0.5)
-    road_buffer_gdf.plot(ax=ax, color="blue", alpha=0.2)
+    road_buffer.plot(ax=ax, color="blue", alpha=0.2)
 
     # finding sightings within 500m of a road
     high_risk = gpd.sjoin(
         sightings_act.drop(columns="index_right", errors="ignore"),
-        road_buffer_gdf,
+        road_buffer,
         how="inner",
         predicate="within",
     )
