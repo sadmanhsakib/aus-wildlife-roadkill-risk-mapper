@@ -1,4 +1,4 @@
-# 🦘 aus-wildlife-roadkill-risk
+# 🐨 Australian Wildlife Roadkill Risk Mapper
 
 > **⚠️ This project is currently a work in progress.** Active development is paused and will resume in a few weeks. The current codebase represents the early-stage foundation of the project.
 
@@ -6,7 +6,7 @@
 
 A Python-based tool for analysing **wildlife-vehicle collision risk** in Australia. The project fetches wildlife sighting data from biodiversity databases and overlays it with road network data to identify high-risk zones where animals are most likely to encounter traffic.
 
-Currently focused on **kangaroos** (*Macropus giganteus*) and **wombats** (*Vombatus ursinus*).
+Currently focused on **kangaroos** (*Macropus giganteus*), **wombats** (*Vombatus ursinus*) and **koalas** (*Phascolarctos cinereus*).
 
 ## How It Works
 

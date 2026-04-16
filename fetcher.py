@@ -8,14 +8,16 @@ load_dotenv()
 # getting the variables from the .env file
 KANGAROO_KEY = int(os.getenv("KANGAROO_KEY"))
 WOMBAT_KEY = int(os.getenv("WOMBAT_KEY"))
+KOALA_KEY = int(os.getenv("KOALA_KEY"))
 KANGAROO_SCIENTIFIC_NAME = os.getenv("KANGAROO_SCIENTIFIC_NAME")
 WOMBAT_SCIENTIFIC_NAME = os.getenv("WOMBAT_SCIENTIFIC_NAME")
+KOALA_SCIENTIFIC_NAME = os.getenv("KOALA_SCIENTIFIC_NAME")
 GBIF_URL = os.getenv("GBIF_URL")
 ALA_URL = os.getenv("ALA_URL")
 
 
 def main():
-    file_name = get_ala_data(WOMBAT_SCIENTIFIC_NAME)
+    file_name = get_gbif_data(KOALA_KEY)
 
     clean_data(file_name)
 
@@ -34,8 +36,6 @@ def get_gbif_data(species_key: int) -> str:
             "offset": offset,
         }
 
-        print(f"Offset: {offset}")
-
         # sending the requests
         response = requests.get(GBIF_URL, params=params)
 
@@ -53,10 +53,11 @@ def get_gbif_data(species_key: int) -> str:
             print(response.text)
             return 1
 
+        print(f"Data Pulled: {offset}")
         # for avoiding HTTP 429 error
         time.sleep(1)
 
-    file_name = f"{results[0]['species'].lower().replace(' ', '_')}_sightings_gbif.json"
+    file_name = f"sightings/{results[0]['species'].lower().replace(' ', '_')}_sightings_gbif.json"
 
     # exporting the json file
     with open(file_name, "w") as file:
@@ -81,8 +82,6 @@ def get_ala_data(species_scientific_name: str) -> str:
         }
         headers = {"Accept": "application/json"}
 
-        print(f"Data Pulled: {offset}")
-
         # sending the requests
         response = requests.get(ALA_URL, params=params, headers=headers)
 
@@ -100,12 +99,11 @@ def get_ala_data(species_scientific_name: str) -> str:
             print(response.text)
             return 1
 
+        print(f"Data Pulled: {offset}")
         # for avoiding HTTP 429 error
         time.sleep(1)
 
-    file_name = (
-        f"{results[0]['scientificName'].lower().replace(' ', '_')}_sightings_ala.json"
-    )
+    file_name = f"sightings/{results[0]['scientificName'].lower().replace(' ', '_')}_sightings_ala.json"
 
     # exporting the json file
     with open(file_name, "w") as file:
