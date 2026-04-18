@@ -4,21 +4,16 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 import pandas as pd
 
-kangaroo_csv = "sightings/kangaroo_sightings.csv"
-wombat_csv = "sightings/wombat_sightings.csv"
-koala_csv = "sightings/koala_sightings.csv"
 
 LATITUDE_COLUMN = "latitude"
 LONGITUDE_COLUMN = "longitude"
 
-kangaroo_df = pd.read_csv(kangaroo_csv)
-wombat_df = pd.read_csv(wombat_csv)
-koala_df = pd.read_csv(koala_csv)
+sightings_df = pd.read_csv("sightings/sightings.csv")
 
 
 def main():
     sightings, states_projected, edges_projected, road_buffer = prepare_spatial_data(
-        wombat_df
+        sightings_df
     )
 
     visualize_data(sightings, states_projected, edges_projected, road_buffer)
@@ -56,6 +51,7 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
         "AUS_NAME21",
         "AREASQKM21",
         "LOCI_URI21",
+        "STE_CODE21",
     ]
     # removing unnecessary columns
     states = states.drop(columns=columns)
@@ -65,6 +61,10 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     sightings = gpd.sjoin(
         gdf_projected, states_projected, how="inner", predicate="within"
     )
+    
+    # dropping unnecessary columns
+    sightings = sightings.drop(columns=["index_right", "countryCode"])
+    sightings = sightings.rename(columns={"STE_NAME21": "state"})
 
     # pulling driveable roads for a specific area
     G = ox.graph_from_place(
@@ -86,34 +86,27 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
 
 
 def visualize_data(sightings, states_projected, edges_projected, road_buffer):
-    # isolating sightings to a specific area
-    sightings_act = sightings[sightings["STE_NAME21"] == "Australian Capital Territory"]
-
-    act = states_projected[
-        states_projected["STE_NAME21"] == "Australian Capital Territory"
-    ]
-
     fig, ax = plt.subplots(figsize=(12, 10))
 
     # plotting the states
-    act.plot(ax=ax, color="green", alpha=0.2)
+    states_projected.plot(ax=ax, color="green", alpha=0.2)
     # plotting the edges and roads
     edges_projected.plot(ax=ax, color="black", linewidth=0.5, alpha=0.5)
     road_buffer.plot(ax=ax, color="grey", alpha=0.2)
 
     # finding sightings within 500m of a road
     high_risk = gpd.sjoin(
-        sightings_act.drop(columns="index_right", errors="ignore"),
+        sightings,
         road_buffer,
         how="inner",
         predicate="within",
     )
     # finding sightings not within 500m of a road
-    low_risk = sightings_act[~sightings_act.index.isin(high_risk.index)]
+    low_risk = sightings[~sightings.index.isin(high_risk.index)]
 
     # plotting the sightings
     high_risk.plot(ax=ax, color="red", markersize=8, alpha=0.9, label="High risk")
-    low_risk.plot(ax=ax, color="blue", markersize=8, alpha=0.9, label="Low risk")
+    low_risk.plot(ax=ax, color="blue", markersize=6, alpha=0.9, label="Low risk")
 
     # labeling the map
     ax.set_title("Road Network (Driveable)", fontsize=14)

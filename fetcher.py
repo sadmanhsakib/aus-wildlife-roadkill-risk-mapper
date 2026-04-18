@@ -17,15 +17,14 @@ ALA_URL = os.getenv("ALA_URL")
 
 
 def main():
-    file_name = get_gbif_data(KANGAROO_KEY)
-
-    if file_name:
-        clean_data(file_name)
-
-        merge_csv(
+    merge_csv(
+        "sightings/sightings.csv",
+        [
             "sightings/kangaroo_sightings.csv",
-            "sightings/macropus_rufus_sightings_gbif.csv",
-        )
+            "sightings/koala_sightings.csv",
+            "sightings/wombat_sightings.csv",
+        ],
+    )
 
 
 def get_gbif_data(species_key: int) -> json:
@@ -190,32 +189,25 @@ def clean_data(file_name: str):
     print(f"✅Data exported to {file_name} successfully. ")
 
 
-def merge_csv(file_name_1: str, file_name_2: str):
-    # converting the csv files in pandas dataframe
-    df_1 = pd.read_csv(file_name_1)
-    df_2 = pd.read_csv(file_name_2)
+def merge_csv(new_file_name: str, file_names: list):
+    df_list = []
+    
+    # loading all DataFrames in a single list
+    for file_name in file_names:
+        df_list.append(pd.read_csv(file_name))
 
-    merged_df = pd.concat([df_1, df_2], ignore_index=True)
+    # merging the dfs all together
+    merged_df = pd.concat(df_list, ignore_index=True)
 
     # removing duplicates
-    merged_df = merged_df.drop_duplicates(subset=["latitude", "longitude"])
-
-    # getting the file name
-    if file_name_1.__contains__("_gbif.csv"):
-        file_name = file_name_1.replace("_gbif.csv", "")
-    elif file_name_1.__contains__("_ala.csv"):
-        file_name = file_name_1.replace("_ala.csv", "")
-    else:
-        file_name = file_name_1.replace(".csv", "")
-
-    print(merged_df.info())
-
-    # removing the json file as it's pretty much useless
-    os.remove(file_name_1)
-    os.remove(file_name_2)
+    merged_df = merged_df.drop_duplicates(subset=["species", "latitude", "longitude"])
 
     # exporting the csv file
-    merged_df.to_csv(f"{file_name}.csv", index=False)
-
-
+    merged_df.to_csv(new_file_name, index=False)
+    
+    print(f"✅{file_names} merged into {new_file_name} successfully. ")
+    
+    # removing the old csv files
+    for file_name in file_names:
+        os.remove(file_name)
 main()
