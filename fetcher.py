@@ -85,7 +85,7 @@ def get_ala_data(species_scientific_name: str) -> json:
             "fq": ["country:Australia"],
             "pageSize": 500,  # records per page (max 1000)
             "startIndex": offset,  # for pagination
-            "fl": "scientificName,raw_countryCode,year,decimalLatitude,decimalLongitude",  # fields to return
+            "fl": "scientificName,raw_countryCode,month,year,decimalLatitude,decimalLongitude",  # fields to return
         }
         headers = {"Accept": "application/json"}
 
@@ -138,22 +138,20 @@ def clean_data(file_name: str):
         df = df[df["countryCode"] == "AU"]
         # removing the unnecessary columns
         df = df[
-            ["species", "countryCode", "year", "decimalLatitude", "decimalLongitude"]
-        ]
-    # for ALA data
-    except KeyError:
-        # only keeping rows in Australia
-        df = df[df["raw_countryCode"] == "AU"]
-        # removing the unnecessary columns
-        df = df[
             [
-                "scientificName",
-                "raw_countryCode",
+                "species",
+                "countryCode",
+                "month",
                 "year",
                 "decimalLatitude",
                 "decimalLongitude",
             ]
         ]
+    # for ALA data
+    except KeyError:
+        # only keeping rows in Australia
+        df = df[df["raw_countryCode"] == "AU"]
+
         # renmaing the ala specific columns
         df = df.rename(
             columns={
@@ -170,8 +168,8 @@ def clean_data(file_name: str):
         }
     )
 
-    # removing rows with missing coordinates
-    df = df.dropna(subset=["latitude", "longitude", "year"])
+    # removing rows with missing values
+    df = df.dropna(subset=["latitude", "longitude"])
 
     # removing rows with older sighting data
     df = df.drop(df[df["year"] < 2020].index)
@@ -191,7 +189,7 @@ def clean_data(file_name: str):
 
 def merge_csv(new_file_name: str, file_names: list):
     df_list = []
-    
+
     # loading all DataFrames in a single list
     for file_name in file_names:
         df_list.append(pd.read_csv(file_name))
@@ -204,12 +202,12 @@ def merge_csv(new_file_name: str, file_names: list):
 
     # exporting the csv file
     merged_df.to_csv(new_file_name, index=False)
-    
+
     print(f"✅{file_names} merged into {new_file_name} successfully. ")
-    
+
     # removing the old csv files
     for file_name in file_names:
         os.remove(file_name)
-        
-        
+
+
 main()

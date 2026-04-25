@@ -26,7 +26,7 @@ def main():
         modeling_gdf,
         states_projected,
         roads_projected,
-        roads_buffer_gdf,
+        roads_with_buffer,
     ) = prepare_spatial_data(sightings_df)
 
     print("Starting Visualization.....")
@@ -35,21 +35,21 @@ def main():
         modeling_gdf,
         states_projected,
         roads_projected,
-        roads_buffer_gdf,
+        roads_with_buffer,
     )
 
 
 def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     # converting pandas DataFrame to GeoDataFrame
-    gdf = gpd.GeoDataFrame(
+    sightings = gpd.GeoDataFrame(
         df,
         # creating the geometry column
         geometry=gpd.points_from_xy(df[LONGITUDE_COLUMN], df[LATITUDE_COLUMN]),
         crs="EPSG:4326",
     )
-    gdf_projected = gdf.to_crs("EPSG:32754")
+    sightings_projected = sightings.to_crs("EPSG:32754")
     # freeing up memory space
-    del gdf
+    del sightings
     gc.collect()
 
     print("Loading the state data....")
@@ -66,17 +66,22 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     gc.collect()
 
     # finding sightings within states
-    sightings = gpd.sjoin(
-        gdf_projected, states_projected, how="inner", predicate="within"
+    sightings_with_states = gpd.sjoin(
+        sightings_projected, states_projected, how="inner", predicate="within"
     )
     # dropping unnecessary columns
-    sightings = sightings.drop(columns=["index_right", "countryCode"])
-    sightings = sightings.rename(columns={"STE_NAME21": "state"})
+    sightings_with_states = sightings_with_states.drop(
+        columns=["index_right", "countryCode"]
+    )
+
+    sightings_with_states = sightings_with_states.rename(
+        columns={"STE_NAME21": "state"}
+    )
     # freeing up memory space
-    del gdf_projected
+    del sightings_projected
     gc.collect()
 
-    print("loading the roads data....")
+    print("Loading the roads data....")
     # loading the roads data
     roads = gpd.read_file("maps/australia.gpkg", layer="gis_osm_roads_free")
     # keeping the main roads
@@ -100,13 +105,28 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     gc.collect()
 
     # adding buffer of 500m around the roads
-    roads_buffer_gdf = gpd.GeoDataFrame(
+    roads_with_buffer = gpd.GeoDataFrame(
         geometry=roads_projected.buffer(500), crs="EPSG:32754"
     ).reset_index(drop=True)
 
+    # spatial join sightings to nearest road
+    sightings_with_roads = gpd.sjoin_nearest(
+        sightings_with_states,
+        roads_projected[["fclass", "geometry"]],
+        how="left",
+        distance_col="distance_to_road",
+    )
+    # freeing up memory space
+    del sightings_with_states
+    gc.collect()
+
+    # drop unnecessary column
+    sightings_with_roads = sightings_with_roads.drop(columns=["index_right"])
+
+    print("Finding sightings within 500m of a road....")
     # finding sightings within 500m of a road
     high_risk_sightings = gpd.sjoin(
-        sightings, roads_buffer_gdf, how="inner", predicate="within"
+        sightings_with_roads, roads_with_buffer, how="inner", predicate="within"
     )
 
     # dropping the duplicate sightings
@@ -115,7 +135,12 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     ]
 
     # finding sightings not within 500m of a road
-    low_risk_sightings = sightings[~sightings.index.isin(high_risk_sightings.index)]
+    low_risk_sightings = sightings_with_roads[
+        ~sightings_with_roads.index.isin(high_risk_sightings.index)
+    ]
+    # freeing up memory space
+    del sightings_with_roads
+    gc.collect()
 
     # adding risk labels
     high_risk_sightings["risk_label"] = 1
@@ -130,7 +155,7 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
         modeling_gdf,
         states_projected,
         roads_projected,
-        roads_buffer_gdf,
+        roads_with_buffer,
     )
 
 
@@ -138,7 +163,7 @@ def visualize_data(
     modeling_gdf: gpd.GeoDataFrame,
     states_projected: gpd.GeoDataFrame,
     roads_projected: gpd.GeoDataFrame,
-    roads_buffer_gdf: gpd.GeoDataFrame,
+    roads_with_buffer: gpd.GeoDataFrame,
 ):
     # setting the background theme
     sns.set_theme(style="whitegrid", palette="deep")
@@ -151,7 +176,7 @@ def visualize_data(
 
     # plotting the roads and roads with buffer
     roads_projected.plot(ax=ax, color="black", linewidth=0.5, alpha=0.5)
-    roads_buffer_gdf.plot(ax=ax, color="grey", alpha=0.2)
+    roads_with_buffer.plot(ax=ax, color="grey", alpha=0.2)
 
     # creating a copy of the modeling dataframe
     sightings_plot_data = modeling_gdf.copy()
