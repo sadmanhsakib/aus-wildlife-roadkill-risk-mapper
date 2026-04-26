@@ -4,7 +4,7 @@
 
 A Python-based geospatial data pipeline for analysing **wildlife-vehicle collision risk** across Australia. The project ingests wildlife sighting records from major biodiversity databases, cleans and standardises the data, overlays it with real road network geometry, and identifies high-risk zones where animals are most likely to encounter traffic.
 
-Currently tracking **kangaroos** (*Macropus giganteus*), **wombats** (*Vombatus ursinus*), and **koalas** (*Phascolarctos cinereus*) — with plans to expand to more species.
+Currently tracking **kangaroos** (*Macropus giganteus*, *Osphranter rufus*, *Macropus fuliginosus*, *Osphranter antilopinus*), **wombats** (*Vombatus ursinus*), and **koalas** (*Phascolarctos cinereus*) — with plans to expand to more species.
 
 > ⚠️ **This project is actively under development.** Core data ingestion and spatial analysis are functional, but several major features are still in progress or pending. Contributions and feedback are welcome!
 
@@ -104,7 +104,7 @@ A scikit-learn classification model is being developed to predict collision risk
 
 1. **Clone the repo**
    ```bash
-   git clone https://github.com/<your-username>/aus-wildlife-roadkill-risk-mapper.git
+   git clone https://github.com/sadmanhsakib/aus-wildlife-roadkill-risk-mapper.git
    cd aus-wildlife-roadkill-risk-mapper
    ```
 
@@ -130,8 +130,8 @@ A scikit-learn classification model is being developed to predict collision risk
    ```
 
 4. **Download geospatial data** and place in the `maps/` directory:
-   - Australian SA1 boundary shapefiles (ABS)
-   - `australia.gpkg` from Geofabrik OpenStreetMap exports
+   - Australian SA1 boundary shapefiles from **[Australian Bureau of Statistics (ABS)](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files)**
+   - `australia.gpkg` from **[Geofabrik](https://download.geofabrik.de/australia-oceania/australia.html)** OpenStreetMap exports
 
 5. **Run the pipeline**
    ```bash
@@ -149,7 +149,6 @@ A scikit-learn classification model is being developed to predict collision risk
 - 📊 **Streamlit dashboard** — Real-time exploration of risk zones by species, state, and time period
 - 🪧 **Signage recommendations** — Auto-generate optimal locations for wildlife warning signs
 - 🦘 **More species** — Extend coverage beyond kangaroos, wombats, and koalas
-- 🌏 **Multi-region analysis** — Scale beyond current region coverage to all of Australia
 
 ## License
 
