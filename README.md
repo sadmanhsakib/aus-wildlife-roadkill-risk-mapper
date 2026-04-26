@@ -1,75 +1,155 @@
 # 🐨 Australian Wildlife Roadkill Risk Mapper
 
-> **⚠️ This project is currently a work in progress.** Active development is paused and will resume in a few weeks. The current codebase represents the early-stage foundation of the project.
-
 ## Overview
 
-A Python-based tool for analysing **wildlife-vehicle collision risk** in Australia. The project fetches wildlife sighting data from biodiversity databases and overlays it with road network data to identify high-risk zones where animals are most likely to encounter traffic.
+A Python-based geospatial data pipeline for analysing **wildlife-vehicle collision risk** across Australia. The project ingests wildlife sighting records from major biodiversity databases, cleans and standardises the data, overlays it with real road network geometry, and identifies high-risk zones where animals are most likely to encounter traffic.
 
-Currently focused on **kangaroos** (*Macropus giganteus*), **wombats** (*Vombatus ursinus*) and **koalas** (*Phascolarctos cinereus*).
+Currently tracking **kangaroos** (*Macropus giganteus*), **wombats** (*Vombatus ursinus*), and **koalas** (*Phascolarctos cinereus*) — with plans to expand to more species.
+
+> ⚠️ **This project is actively under development.** Core data ingestion and spatial analysis are functional, but several major features are still in progress or pending. Contributions and feedback are welcome!
+
+## Roadmap
+
+| # | Phase | Status |
+|---|-------|--------|
+| 1 | **Data Ingestion** (ALA + GBIF) | ✅ Done |
+| 2 | **Data Cleaning + GeoPandas** | ✅ Done |
+| 3 | **Risk Modeling** (scikit-learn) | 🔄 ~50% — training phase |
+| 4 | **Map Visualization** (Folium) | ⏳ Pending |
+| 5 | **Dashboard UI** (Streamlit) | ⏳ Pending |
+| 6 | **Output** (Risk zones + signage recommendations) | ⏳ Pending |
 
 ## How It Works
 
-1. **Data Fetching** — Pulls wildlife occurrence records from:
-   - [GBIF](https://www.gbif.org/) (Global Biodiversity Information Facility)
-   - [ALA](https://www.ala.org.au/) (Atlas of Living Australia)
+### 1. Data Ingestion ✅
 
-2. **Data Cleaning** — Standardises and filters the raw sighting data (removes duplicates, missing coordinates, etc.)
+Pulls wildlife occurrence records from two sources:
 
-3. **Spatial Risk Analysis** — Uses GeoPandas and OSMnx to:
-   - Overlay sighting locations on Australian road networks
-   - Buffer roads by 500m to define a risk zone
-   - Classify each sighting as **high-risk** (within 500m of a road) or **low-risk**
+- **[GBIF](https://www.gbif.org/)** — Global Biodiversity Information Facility (paginated REST API, up to 10 000+ records per species)
+- **[ALA](https://www.ala.org.au/)** — Atlas of Living Australia (paginated REST API with field selection)
 
-4. **Visualisation** — Plots the road network, buffer zones, and colour-coded sightings on a map
+Both pipelines handle pagination, rate-limiting, and export raw results to JSON before processing.
+
+### 2. Data Cleaning ✅
+
+- Standardises column schemas across GBIF and ALA formats
+- Filters to Australian records only
+- Drops rows with missing coordinates, year, month, or state
+- Removes sightings older than 2020
+- Deduplicates on location + time
+- Merges multiple species/source CSVs into a single `sightings.csv`
+
+### 3. Spatial Risk Analysis ✅
+
+Uses GeoPandas + Shapely to:
+
+- Convert sightings to a projected CRS (`EPSG:32754`)
+- Load Australian state boundaries (SA1 2021 shapefiles)
+- Load road network geometry from an OpenStreetMap GeoPackage (`australia.gpkg`)
+- Filter to relevant road types (motorway, trunk, primary, secondary, tertiary, residential, unclassified)
+- Buffer roads by **500 m** to define risk corridors
+- Spatial-join sightings to nearest road (`sjoin_nearest`) and classify as **high-risk** (within buffer) or **low-risk**
+
+### 4. Visualisation (current: Matplotlib + Seaborn)
+
+Plots the full analysis on a single figure:
+
+- Australian state boundaries (green fill)
+- Road network (black lines)
+- 500 m road buffer zones (grey fill)
+- Sightings colour-coded: 🔴 High risk / 🔵 Low risk
+
+> **Coming soon:** Migration from static Matplotlib plots to interactive **Folium** maps.
+
+### 5. Risk Modeling — 🔄 In Progress
+
+A scikit-learn classification model is being developed to predict collision risk based on features such as distance to road, road class, species, season, and state. Currently ~50% complete.
+
+### 6. Dashboard & Outputs — ⏳ Planned
+
+- **Streamlit dashboard** for interactive exploration of risk zones
+- Exportable **risk zone maps** and **signage placement recommendations**
 
 ## Project Structure
 
 ```
-├── fetcher.py          # Fetches & cleans data from GBIF and ALA APIs
-├── risk-analyzer.py    # Spatial analysis & visualisation
-├── sightings/          # Cached sighting data (JSON & CSV)
-├── roads/              # Australian SA1 boundary shapefiles
+├── fetcher.py          # Data ingestion from GBIF & ALA APIs + cleaning + merging
+├── analyzer.py         # Spatial risk analysis & visualisation
+├── sightings.csv       # Merged & cleaned sighting dataset (gitignored)
+├── maps/               # Geospatial data — shapefiles & GeoPackage (gitignored)
+│   ├── SA1_2021_AUST_GDA2020.*   # Australian SA1 boundary shapefiles
+│   └── australia.gpkg             # OSM road network GeoPackage
 ├── .env                # API keys and config (not committed)
+├── .gitignore          # Git ignore rules
 ├── requirements.txt    # Python dependencies
-└── test.py             # Scratch/testing file
+├── test.py             # Scratch/testing utilities (gitignored)
+└── LICENSE             # MIT License
 ```
 
 ## Tech Stack
 
-- **Python 3**
-- **Pandas / GeoPandas** — Data manipulation & spatial operations
-- **OSMnx** — Road network retrieval from OpenStreetMap
-- **Matplotlib** — Visualisation
-- **Shapely** — Geometric operations
-- **Requests** — API calls
-
-## Current Status
-
-This is an **early-stage prototype**. The core data pipeline and basic risk analysis are functional, but there is still significant work planned, including but not limited to:
-
-- [ ] Expanding species coverage beyond kangaroos and wombats
-- [ ] Analysing multiple regions beyond the ACT
-- [ ] Improving risk classification methodology
-- [ ] Adding density-based hotspot detection
-- [ ] Building a more polished output/reporting system
+| Category | Tools |
+|----------|-------|
+| Language | Python 3 |
+| Data Manipulation | Pandas |
+| Spatial Analysis | GeoPandas, Shapely |
+| Road Data | OpenStreetMap (via GeoPackage) |
+| Visualisation | Matplotlib, Seaborn *(Folium planned)* |
+| ML (upcoming) | scikit-learn |
+| Dashboard (upcoming) | Streamlit |
+| API Calls | Requests |
+| Config | python-dotenv |
 
 ## Setup
 
-1. Clone the repo
-2. Create a virtual environment and install dependencies:
+1. **Clone the repo**
    ```bash
+   git clone https://github.com/<your-username>/aus-wildlife-roadkill-risk-mapper.git
+   cd aus-wildlife-roadkill-risk-mapper
+   ```
+
+2. **Create a virtual environment & install dependencies**
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate        # Windows
+   # source .venv/bin/activate   # macOS / Linux
    pip install -r requirements.txt
    ```
-3. Create a `.env` file with the required API URLs (see `.env.example` if available)
-4. Run the fetcher to pull sighting data:
+
+3. **Configure environment variables**
+   Create a `.env` file in the project root with:
+   ```env
+   KANGAROO_KEY=<gbif_taxon_key>
+   WOMBAT_KEY=<gbif_taxon_key>
+   KOALA_KEY=<gbif_taxon_key>
+   KANGAROO_SCIENTIFIC_NAME=Macropus giganteus
+   WOMBAT_SCIENTIFIC_NAME=Vombatus ursinus
+   KOALA_SCIENTIFIC_NAME=Phascolarctos cinereus
+   GBIF_URL=https://api.gbif.org/v1/occurrence/search
+   ALA_URL=https://biocache-ws.ala.org.au/ws/occurrences/search
+   ```
+
+4. **Download geospatial data** and place in the `maps/` directory:
+   - Australian SA1 boundary shapefiles (ABS)
+   - `australia.gpkg` from Geofabrik OpenStreetMap exports
+
+5. **Run the pipeline**
    ```bash
+   # Fetch & clean sighting data
    python fetcher.py
+
+   # Run spatial risk analysis & visualisation
+   python analyzer.py
    ```
-5. Run the risk analyser:
-   ```bash
-   python risk-analyzer.py
-   ```
+
+## Future Goals
+
+- 🧠 **Machine-learning risk model** — Train a classifier to predict roadkill probability per grid cell
+- 🗺️ **Interactive Folium maps** — Zoomable, layer-toggled web maps with popups
+- 📊 **Streamlit dashboard** — Real-time exploration of risk zones by species, state, and time period
+- 🪧 **Signage recommendations** — Auto-generate optimal locations for wildlife warning signs
+- 🦘 **More species** — Extend coverage beyond kangaroos, wombats, and koalas
+- 🌏 **Multi-region analysis** — Scale beyond current region coverage to all of Australia
 
 ## License
 
