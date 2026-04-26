@@ -17,18 +17,8 @@ ALA_URL = os.getenv("ALA_URL")
 
 
 def main():
-    get_ala_data(KANGAROO_SCIENTIFIC_NAME)
-    get_ala_data(WOMBAT_SCIENTIFIC_NAME)
-    get_ala_data(KOALA_SCIENTIFIC_NAME)
-    return 0
-    merge_csv(
-        "sightings/sightings.csv",
-        [
-            "sightings/kangaroo_sightings.csv",
-            "sightings/koala_sightings.csv",
-            "sightings/wombat_sightings.csv",
-        ],
-    )
+    f = get_ala_data(KANGAROO_SCIENTIFIC_NAME)
+    clean_data(f)
 
 
 def get_gbif_data(species_key: int) -> str:
@@ -39,7 +29,6 @@ def get_gbif_data(species_key: int) -> str:
         params = {
             "taxonKey": species_key,
             "country": "AU",
-            "stateProvince": "Australian Capital Territory",
             "hasCoordinate": "true",
             "limit": 300,
             "offset": offset,
@@ -54,7 +43,7 @@ def get_gbif_data(species_key: int) -> str:
             results.extend(data["results"])
 
             # stopping if it's the end of the dataset
-            if data["endOfRecords"] or offset > 1000:
+            if data["endOfRecords"] or offset > 10000:
                 break
             offset += 300
         else:
@@ -66,7 +55,9 @@ def get_gbif_data(species_key: int) -> str:
         # for avoiding HTTP 429 error
         time.sleep(1)
     if results:
-        file_name = f"sightings/{results[0]['species'].lower().replace(' ', '_')}_sightings_gbif.json"
+        file_name = (
+            f"{results[0]['species'].lower().replace(' ', '_')}_sightings_gbif.json"
+        )
 
         # exporting the json file
         with open(file_name, "w") as file:
@@ -89,7 +80,7 @@ def get_ala_data(species_scientific_name: str) -> str:
             "fq": ["country:Australia"],
             "pageSize": 500,  # records per page (max 1000)
             "startIndex": offset,  # for pagination
-            "fl": "scientificName,raw_countryCode,month,year,decimalLatitude,decimalLongitude",  # fields to return
+            "fl": "scientificName,month,year,stateProvince,raw_countryCode,decimalLatitude,decimalLongitude",  # fields to return
         }
         headers = {"Accept": "application/json"}
 
@@ -102,7 +93,7 @@ def get_ala_data(species_scientific_name: str) -> str:
             results.extend(data["occurrences"])
 
             # stopping if it's the end of the dataset
-            if data["totalRecords"] < (offset + 500) or offset > 5000:
+            if data["totalRecords"] < (offset + 500) or offset > 10:
                 break
             offset += 500
         else:
@@ -115,7 +106,7 @@ def get_ala_data(species_scientific_name: str) -> str:
         time.sleep(1)
 
     if results:
-        file_name = f"sightings/{results[0]['scientificName'].lower().replace(' ', '_')}_sightings_ala.json"
+        file_name = f"{results[0]['scientificName'].lower().replace(' ', '_')}_sightings_ala.json"
 
         # exporting the json file
         with open(file_name, "w") as file:
@@ -129,6 +120,16 @@ def get_ala_data(species_scientific_name: str) -> str:
 
 
 def clean_data(file_name: str):
+    column_schema = [
+        "species",
+        "month",
+        "year",
+        "stateProvince",
+        "countryCode",
+        "decimalLatitude",
+        "decimalLongitude",
+    ]
+
     # loading the file
     with open(file_name, "r") as file:
         data: dict = json.load(file)
@@ -141,16 +142,7 @@ def clean_data(file_name: str):
         # only keeping rows in Australia
         df = df[df["countryCode"] == "AU"]
         # removing the unnecessary columns
-        df = df[
-            [
-                "species",
-                "countryCode",
-                "month",
-                "year",
-                "decimalLatitude",
-                "decimalLongitude",
-            ]
-        ]
+        df = df[column_schema]
     # for ALA data
     except KeyError:
         # only keeping rows in Australia
@@ -164,22 +156,29 @@ def clean_data(file_name: str):
             }
         )
 
+        # ordering the column in correct schema
+        df = df[column_schema]
+
     # renmaing the other columns
     df = df.rename(
         columns={
+            "stateProvince": "state",
             "decimalLatitude": "latitude",
             "decimalLongitude": "longitude",
         }
     )
 
+    # removing the countryCode column
+    df = df.drop(columns=["countryCode"])
+
     # removing rows with missing values
-    df = df.dropna(subset=["latitude", "longitude"])
+    df = df.dropna(subset=["latitude", "longitude", "year", "month", "state"])
 
     # removing rows with older sighting data
     df = df.drop(df[df["year"] < 2020].index)
 
     # removing duplicates
-    df = df.drop_duplicates(subset=["latitude", "longitude"])
+    df = df.drop_duplicates(subset=["latitude", "longitude", "year", "month"])
 
     # removing the json file as it's pretty much useless
     os.remove(file_name)
@@ -202,16 +201,19 @@ def merge_csv(new_file_name: str, file_names: list):
     merged_df = pd.concat(df_list, ignore_index=True)
 
     # removing duplicates
-    merged_df = merged_df.drop_duplicates(subset=["species", "latitude", "longitude"])
+    merged_df = merged_df.drop_duplicates(
+        subset=["species", "month", "year", "latitude", "longitude"]
+    )
+
+    # removing the old csv files
+    for file_name in file_names:
+        os.remove(file_name)
 
     # exporting the csv file
     merged_df.to_csv(new_file_name, index=False)
 
     print(f"✅{file_names} merged into {new_file_name} successfully. ")
 
-    # removing the old csv files
-    for file_name in file_names:
-        os.remove(file_name)
 
-
-main()
+if __name__ == "__main__":
+    main()

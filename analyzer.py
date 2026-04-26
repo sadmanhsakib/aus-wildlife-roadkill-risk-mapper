@@ -30,7 +30,6 @@ def main():
     ) = prepare_spatial_data(sightings_df)
 
     print("Starting Visualization.....")
-
     visualize(
         modeling_gdf,
         states_projected,
@@ -65,22 +64,6 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     del states
     gc.collect()
 
-    # finding sightings within states
-    sightings_with_states = gpd.sjoin(
-        sightings_projected, states_projected, how="inner", predicate="within"
-    )
-    # dropping unnecessary columns
-    sightings_with_states = sightings_with_states.drop(
-        columns=["index_right", "countryCode"]
-    )
-
-    sightings_with_states = sightings_with_states.rename(
-        columns={"STE_NAME21": "state"}
-    )
-    # freeing up memory space
-    del sightings_projected
-    gc.collect()
-
     print("Loading the roads data....")
     # loading the roads data
     roads = gpd.read_file("maps/australia.gpkg", layer="gis_osm_roads_free")
@@ -111,13 +94,13 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
 
     # spatial join sightings to nearest road
     sightings_with_roads = gpd.sjoin_nearest(
-        sightings_with_states,
+        sightings_projected,
         roads_projected[["fclass", "geometry"]],
         how="left",
         distance_col="distance_to_road",
     )
     # freeing up memory space
-    del sightings_with_states
+    del sightings_projected
     gc.collect()
 
     # drop unnecessary column
@@ -150,6 +133,11 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     modeling_gdf = pd.concat(
         [high_risk_sightings, low_risk_sightings], ignore_index=True
     )
+    # freeing up memory space
+    del high_risk_sightings, low_risk_sightings
+    gc.collect()
+
+    modeling_gdf = modeling_gdf.drop(columns=["index_right"])
 
     return (
         modeling_gdf,
