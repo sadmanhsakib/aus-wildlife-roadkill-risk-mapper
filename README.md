@@ -129,7 +129,7 @@ A scikit-learn classification model is being developed to predict collision risk
    ALA_URL=https://biocache-ws.ala.org.au/ws/occurrences/search
    ```
 
-4. **Download geospatial data** and place in the `maps/` directory:
+4. **Download geospatial data** and place in the `data/` directory:
    - Australian SA1 boundary shapefiles from **[Australian Bureau of Statistics (ABS)](https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files)**
    - `australia.gpkg` from **[Geofabrik](https://download.geofabrik.de/australia-oceania/australia.html)** OpenStreetMap exports
 

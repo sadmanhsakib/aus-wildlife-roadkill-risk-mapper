@@ -54,7 +54,7 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     print("Loading the state data....")
     # loading the whole map
     states = gpd.read_file(
-        "maps/SA1_2021_AUST_GDA2020.shp", columns=["STE_NAME21", "geometry"]
+        "data/SA1_2021_AUST_GDA2020.shp", columns=["STE_NAME21", "geometry"]
     )
 
     # filtering to just the main states
@@ -66,7 +66,7 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
 
     print("Loading the roads data....")
     # loading the roads data
-    roads = gpd.read_file("maps/australia.gpkg", layer="gis_osm_roads_free")
+    roads = gpd.read_file("data/australia.gpkg", layer="gis_osm_roads_free")
     # keeping the main roads
     roads = roads[["osm_id", "fclass", "name", "geometry"]]
 
