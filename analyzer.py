@@ -18,7 +18,7 @@ MAIN_STATES = (
     "Northern Territory",
 )
 
-sightings_df = pd.read_csv("sightings.csv")
+sightings_df = pd.read_csv("sightings/sightings.csv")
 
 
 def main():
@@ -138,6 +138,11 @@ def prepare_spatial_data(df: pd.DataFrame) -> tuple[gpd.GeoDataFrame]:
     gc.collect()
 
     modeling_gdf = modeling_gdf.drop(columns=["index_right"])
+
+    # rounding the distance
+    modeling_gdf["distance_to_road"] = round(
+        modeling_gdf["distance_to_road"].astype(float), 2
+    )
 
     return (
         modeling_gdf,

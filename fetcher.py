@@ -1,24 +1,51 @@
-import json, os, time
+import os, time
 import requests
 import pandas as pd
-from dotenv import load_dotenv
 
-load_dotenv()
+# GBIF KEYS
+KANGAROO_RED_KEY = 12019022
+KANGAROO_GREY_KEY = 5219981
+WALLABY_SWAMP_KEY = 2440149
+WALLABY_RED_NECKED_KEY = 9589697
+WOMBAT_KEY = 2440301
+KOALA_KEY = 2440012
+POSSUM_BRUSHTAIL_KEY = 2440254
+POSSUM_RINGTAIL_KEY = 2440062
+BANDICOOT_BROWN_KEY = 2435311
+ECHIDNA_KEY = 2433378
+PLATYPUS_KEY = 2433378
+# Scientific Names for ALA
+KANGAROO_RED_SCIENTIFIC_NAME = "Osphranter rufus"
+KANGAROO_GREY_SCIENTIFIC_NAME = "Macropus giganteus"
+WALLABY_SWAMP_SCIENTIFIC_NAME = "Wallabia bicolor"
+WALLABY_RED_NECKED_SCIENTIFIC_NAME = "Notamacropus rufogriseus"
+WOMBAT_SCIENTIFIC_NAME = "Vombatus ursinus"
+KOALA_SCIENTIFIC_NAME = "Phascolarctos cinereus"
+POSSUM_BRUSHTAIL_SCIENTIFIC_NAME = "Trichosurus vulpecula"
+POSSUM_RINGTAIL_SCIENTIFIC_NAME = "Pseudocheirus peregrinus"
+BANDICOOT_BROWN_SCIENTIFIC_NAME = "Isoodon obesulus"
+ECHIDNA_SCIENTIFIC_NAME = "Tachyglossus aculeatus"
+PLATYPUS_SCIENTIFIC_NAME = "Ornithorhynchus anatinus"
+# Base URLs
+GBIF_URL = "https://api.gbif.org/v1/occurrence/search"
+ALA_URL = "https://biocache-ws.ala.org.au/ws/occurrences/search"
 
-# getting the variables from the .env file
-KANGAROO_KEY = int(os.getenv("KANGAROO_KEY"))
-WOMBAT_KEY = int(os.getenv("WOMBAT_KEY"))
-KOALA_KEY = int(os.getenv("KOALA_KEY"))
-KANGAROO_SCIENTIFIC_NAME = os.getenv("KANGAROO_SCIENTIFIC_NAME")
-WOMBAT_SCIENTIFIC_NAME = os.getenv("WOMBAT_SCIENTIFIC_NAME")
-KOALA_SCIENTIFIC_NAME = os.getenv("KOALA_SCIENTIFIC_NAME")
-GBIF_URL = os.getenv("GBIF_URL")
-ALA_URL = os.getenv("ALA_URL")
+STATE_CODES = {
+    "New South Wales": "NSW",
+    "Queensland": "QLD",
+    "Victoria": "VIC",
+    "Tasmania": "TAS",
+    "Australian Capital Territory": "ACT",
+    "Nortern Territory": "NT",
+    "South Australia": "SA",
+    "Western Australia": "WA",
+}
 
 
 def main():
-    f = get_ala_data(KANGAROO_SCIENTIFIC_NAME)
-    clean_data(f)
+
+    clean_data("vombatus_ursinus_sightings_ala.csv")
+    return
 
 
 def get_gbif_data(species_key: int) -> str:
@@ -43,7 +70,7 @@ def get_gbif_data(species_key: int) -> str:
             results.extend(data["results"])
 
             # stopping if it's the end of the dataset
-            if data["endOfRecords"] or offset > 10000:
+            if data["endOfRecords"] or offset > 100:
                 break
             offset += 300
         else:
@@ -54,14 +81,14 @@ def get_gbif_data(species_key: int) -> str:
         print(f"Data Pulled: {offset}")
         # for avoiding HTTP 429 error
         time.sleep(1)
+
     if results:
         file_name = (
-            f"{results[0]['species'].lower().replace(' ', '_')}_sightings_gbif.json"
+            f"{results[0]['species'].lower().replace(' ', '_')}_sightings_gbif.csv"
         )
-
-        # exporting the json file
-        with open(file_name, "w") as file:
-            json.dump(results, file)
+        # exporting the collected data to a csv file
+        df = pd.DataFrame(results)
+        df.to_csv(file_name, index=False)
         print(f"✅Data exported to {file_name} successfully. ")
 
         return file_name
@@ -80,7 +107,7 @@ def get_ala_data(species_scientific_name: str) -> str:
             "fq": ["country:Australia"],
             "pageSize": 500,  # records per page (max 1000)
             "startIndex": offset,  # for pagination
-            "fl": "scientificName,month,year,stateProvince,raw_countryCode,decimalLatitude,decimalLongitude",  # fields to return
+            "fl": "scientificName,month,year,stateProvince,country,decimalLatitude,decimalLongitude",  # fields to return
         }
         headers = {"Accept": "application/json"}
 
@@ -106,11 +133,11 @@ def get_ala_data(species_scientific_name: str) -> str:
         time.sleep(1)
 
     if results:
-        file_name = f"{results[0]['scientificName'].lower().replace(' ', '_')}_sightings_ala.json"
+        file_name = f"{results[0]['scientificName'].lower().replace(' ', '_')}_sightings_ala.csv"
 
-        # exporting the json file
-        with open(file_name, "w") as file:
-            json.dump(results, file)
+        # exporting the collected data to a csv file
+        df = pd.DataFrame(results)
+        df.to_csv(file_name, index=False)
         print(f"✅Data exported to {file_name} successfully. ")
 
         return file_name
@@ -125,39 +152,31 @@ def clean_data(file_name: str):
         "month",
         "year",
         "stateProvince",
-        "countryCode",
+        "country",
         "decimalLatitude",
         "decimalLongitude",
     ]
 
-    # loading the file
-    with open(file_name, "r") as file:
-        data: dict = json.load(file)
+    # reading the csv file
+    df = pd.read_csv(file_name)
 
-    # loading the dataframe
-    df = pd.DataFrame(data)
-
-    # for GBIF data
-    try:
-        # only keeping rows in Australia
-        df = df[df["countryCode"] == "AU"]
-        # removing the unnecessary columns
-        df = df[column_schema]
     # for ALA data
-    except KeyError:
-        # only keeping rows in Australia
-        df = df[df["raw_countryCode"] == "AU"]
-
-        # renmaing the ala specific columns
+    try:
+        # renmaing the ala specific column
         df = df.rename(
             columns={
                 "scientificName": "species",
-                "raw_countryCode": "countryCode",
             }
         )
+    # for GBIF data
+    except KeyError:
+        pass
 
-        # ordering the column in correct schema
-        df = df[column_schema]
+    # ordering the column in correct schema
+    df = df[column_schema]
+
+    # only keeping rows in Australia
+    df = df[df["country"] == "Australia"]
 
     # renmaing the other columns
     df = df.rename(
@@ -168,8 +187,11 @@ def clean_data(file_name: str):
         }
     )
 
+    # adding the state codes
+    df["state"] = df["state"].map(STATE_CODES)
+
     # removing the countryCode column
-    df = df.drop(columns=["countryCode"])
+    df = df.drop(columns=["country"])
 
     # removing rows with missing values
     df = df.dropna(subset=["latitude", "longitude", "year", "month", "state"])
@@ -180,11 +202,6 @@ def clean_data(file_name: str):
     # removing duplicates
     df = df.drop_duplicates(subset=["latitude", "longitude", "year", "month"])
 
-    # removing the json file as it's pretty much useless
-    os.remove(file_name)
-    print(f"✅{file_name} removed successfully. ")
-
-    file_name = file_name.replace(".json", ".csv")
     # exporting the csv file
     df.to_csv(f"{file_name}", index=False)
     print(f"✅Data exported to {file_name} successfully. ")
