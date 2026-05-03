@@ -11,6 +11,7 @@ test.py
 data/
 tmp/
 sightings/
+project_blueprint.md
 
 # Distribution / packaging
 .Python
