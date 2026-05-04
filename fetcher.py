@@ -13,7 +13,7 @@ POSSUM_BRUSHTAIL_KEY = 2440254
 POSSUM_RINGTAIL_KEY = 2440062
 BANDICOOT_BROWN_KEY = 2435311
 ECHIDNA_KEY = 2433378
-PLATYPUS_KEY = 2433378
+PLATYPUS_KEY = 2433376
 # Scientific Names for ALA
 KANGAROO_RED_SCIENTIFIC_NAME = "Osphranter rufus"
 KANGAROO_GREY_SCIENTIFIC_NAME = "Macropus giganteus"
@@ -43,9 +43,7 @@ STATE_CODES = {
 
 
 def main():
-
-    clean_data("vombatus_ursinus_sightings_ala.csv")
-    return
+    to_parquet("sightings/")
 
 
 def get_gbif_data(species_key: int) -> str:
@@ -152,7 +150,6 @@ def clean_data(file_name: str):
         "month",
         "year",
         "stateProvince",
-        "country",
         "decimalLatitude",
         "decimalLongitude",
     ]
@@ -175,9 +172,6 @@ def clean_data(file_name: str):
     # ordering the column in correct schema
     df = df[column_schema]
 
-    # only keeping rows in Australia
-    df = df[df["country"] == "Australia"]
-
     # renmaing the other columns
     df = df.rename(
         columns={
@@ -189,9 +183,6 @@ def clean_data(file_name: str):
 
     # adding the state codes
     df["state"] = df["state"].map(STATE_CODES)
-
-    # removing the countryCode column
-    df = df.drop(columns=["country"])
 
     # removing rows with missing values
     df = df.dropna(subset=["latitude", "longitude", "year", "month", "state"])
@@ -230,6 +221,21 @@ def merge_csv(new_file_name: str, file_names: list):
     merged_df.to_csv(new_file_name, index=False)
 
     print(f"✅{file_names} merged into {new_file_name} successfully. ")
+
+
+def to_parquet(path: str):
+    for file_name in os.listdir(path):
+        if not file_name.endswith(".csv"):
+            continue
+
+        file_name = os.path.join(path, file_name)
+        new_file_name = file_name.replace(".csv", ".parquet")
+
+        df = pd.read_csv(file_name)
+        df.to_parquet(new_file_name, index=False)
+
+        os.remove(file_name)
+        print(f"✅Data exported to {new_file_name} successfully. ")
 
 
 if __name__ == "__main__":

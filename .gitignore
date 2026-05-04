@@ -9,7 +9,7 @@ __pycache__/
 cache
 test.py
 data/
-tmp/
+backup/
 sightings/
 project_blueprint.md
 
