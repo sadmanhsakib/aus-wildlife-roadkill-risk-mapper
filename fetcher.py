@@ -41,9 +41,44 @@ STATE_CODES = {
     "Western Australia": "WA",
 }
 
+SEASON_MAP = {
+    1: "Summer",
+    2: "Summer",
+    3: "Autumn",
+    4: "Autumn",
+    5: "Autumn",
+    6: "Winter",
+    7: "Winter",
+    8: "Winter",
+    9: "Spring",
+    10: "Spring",
+    11: "Spring",
+    12: "Summer",
+}
+
+PEAK_SEASON_MAP = {
+    "Osphranter rufus": [9, 10, 11, 12],
+    "Macropus giganteus": [9, 10, 11, 12],
+    "Wallabia bicolor": [9, 10, 11],
+    "Notamacropus rufogriseus": [10, 11, 12, 1],
+    "Vombatus ursinus": [3, 4, 5, 6, 7, 8],
+    "Phascolarctos cinereus": [10, 11, 12, 1, 2],
+    "Trichosurus vulpecula": [3, 4, 9, 10],
+    "Pseudocheirus peregrinus": [4, 5, 9, 10],
+    "Isoodon obesulus": [8, 9, 10, 11],
+    "Tachyglossus aculeatus": [6, 7, 8, 9],
+    "Ornithorhynchus anatinus": [9, 10, 11],
+}
+
 
 def main():
-    to_parquet("sightings/")
+    filenames = []
+
+    for filename in os.listdir("sightings/"):
+        if filename.endswith(".parquet"):
+            filenames.append(f"sightings/{filename}")
+
+    merge("sightings.parquet", filenames, shouldDelete=False)
 
 
 def get_gbif_data(species_key: int) -> str:
@@ -198,12 +233,15 @@ def clean_data(file_name: str):
     print(f"✅Data exported to {file_name} successfully. ")
 
 
-def merge_csv(new_file_name: str, file_names: list):
+def merge(new_file_name: str, file_names: list, shouldDelete=True):
     df_list = []
 
     # loading all DataFrames in a single list
     for file_name in file_names:
-        df_list.append(pd.read_csv(file_name))
+        if file_name.endswith(".csv"):
+            df_list.append(pd.read_csv(file_name))
+        elif file_name.endswith(".parquet"):
+            df_list.append(pd.read_parquet(file_name))
 
     # merging the dfs all together
     merged_df = pd.concat(df_list, ignore_index=True)
@@ -213,12 +251,16 @@ def merge_csv(new_file_name: str, file_names: list):
         subset=["species", "month", "year", "latitude", "longitude"]
     )
 
-    # removing the old csv files
-    for file_name in file_names:
-        os.remove(file_name)
+    if shouldDelete:
+        # removing the old files
+        for file_name in file_names:
+            os.remove(file_name)
 
-    # exporting the csv file
-    merged_df.to_csv(new_file_name, index=False)
+    # exporting the file
+    if new_file_name.endswith(".csv"):
+        merged_df.to_csv(new_file_name, index=False)
+    elif new_file_name.endswith(".parquet"):
+        merged_df.to_parquet(new_file_name, index=False)
 
     print(f"✅{file_names} merged into {new_file_name} successfully. ")
 
@@ -236,6 +278,25 @@ def to_parquet(path: str):
 
         os.remove(file_name)
         print(f"✅Data exported to {new_file_name} successfully. ")
+
+
+def enrich(path: str):
+    for file_name in os.listdir(path):
+        if not file_name.endswith(".parquet"):
+            continue
+
+        file_name = os.path.join(path, file_name)
+        # loading the df
+        df = pd.read_parquet(file_name)
+
+        # adding the season column
+        df["season"] = df["month"].map(SEASON_MAP)
+        # adding the peak_season column
+        df["is_peak_season"] = df.apply(
+            lambda x: 1 if x["month"] in PEAK_SEASON_MAP[x["species"]] else 0, axis=1
+        )
+
+        df.to_parquet(file_name, index=False)
 
 
 if __name__ == "__main__":
